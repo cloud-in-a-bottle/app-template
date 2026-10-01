@@ -12,4 +12,7 @@ RUN uv sync --frozen --no-dev
 
 EXPOSE 8080
 
-CMD ["uv", "run", "--frozen", "--no-dev", "hypercorn", "server.app:app", "--bind", "0.0.0.0:8080"]
+# Exec the venv's hypercorn directly rather than through `uv run`, which would stay resident as a parent process,
+# and serve from this one process with `--workers 0` rather than hypercorn's default of a supervisor plus a spawned
+# worker and multiprocessing resource tracker.  Together those extra processes cost more memory than the app itself.
+CMD ["/app/.venv/bin/hypercorn", "server.app:app", "--workers", "0", "--bind", "0.0.0.0:8080"]
