@@ -1,0 +1,75 @@
+# Reusable workflow: runs an app's pytest suite (including OpenhostStack harness tests) on ubuntu.
+# Apps call it with:
+#
+#   jobs:
+#     test:
+#       uses: cloud-in-a-bottle/app-template/.github/workflows/app-test.yml@main
+#
+# The rootless podman + networking setup mirrors the openhost repo's own CI (.github/workflows/ci.yml there).
+name: App tests
+
+on:
+  workflow_call:
+    inputs:
+      pytest-args:
+        description: Extra arguments passed to pytest.
+        type: string
+        default: ""
+      timeout-minutes:
+        type: number
+        default: 30
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # The harness needs podman ~5.8; ubuntu's apt podman is too old, so install it from conda-forge like openhost does.
+      - uses: prefix-dev/setup-pixi@v0.8.10
+        with:
+          pixi-version: v0.70.2
+          run-install: false
+      - name: Install rootless podman
+        run: |
+          sudo apt-get update
+          sudo apt-get remove -y --purge podman crun
+          sudo apt-get install -y uidmap passt
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          pixi global install podman crun
+          echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
+
+      - name: Verify rootless podman works
+        run: podman info --format '{{.Host.Security.Rootless}}' | grep -qx true
+
+      # pasta shares the host's IP with containers, so app containers reach the router via a dummy interface.
+      - name: Create openhost0 dummy interface for container-to-router traffic
+        run: |
+          sudo ip link add openhost0 type dummy
+          sudo ip addr add 10.200.0.1/32 dev openhost0
+          sudo ip link set openhost0 up
+          mkdir -p ~/.config/containers
+          printf '[containers]\nhost_containers_internal_ip = "10.200.0.1"\n' >> ~/.config/containers/containers.conf
+
+      - name: Install playwright chromium
+        run: uv run --frozen playwright install --with-deps chromium
+
+      - name: Run tests
+        run: uv run --frozen pytest -v ${{ inputs.pytest-args }}
+
+      - name: Dump router and app logs on failure
+        if: failure()
+        run: |
+          find /tmp "$HOME" -name router.log 2>/dev/null | while read -r f; do echo "=== $f ==="; tail -100 "$f"; done
+          for c in $(podman ps -a --format '{{.Names}}'); do echo "=== podman logs $c ==="; podman logs --tail 50 "$c" 2>&1; done
