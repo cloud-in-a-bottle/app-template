@@ -24,8 +24,7 @@ permissions:
 
 jobs:
   test:
-    # 26.04's apt podman is 5.x; 24.04's 4.9 is older than the harness is developed against.
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
       - uses: actions/checkout@v4
@@ -37,13 +36,28 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Set up rootless podman
+      - name: DEBUG podman via pixi
         run: |
+          set -x
           sudo apt-get update
-          sudo apt-get install -y podman crun uidmap passt
+          sudo apt-get remove -y --purge podman crun
+          sudo apt-get install -y uidmap passt golang-github-containers-common
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          podman --version
-          podman info --format '{{.Host.Security.Rootless}}' | grep -qx true
+          curl -fsSL https://pixi.sh/install.sh | bash
+          export PATH="$HOME/.pixi/bin:$PATH"
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS=$DBUS_SESSION_BUS_ADDRESS uid=$(id -u)"
+          ls -la /run/user/$(id -u) || true
+          systemctl --user status 2>&1 | head -5 || true
+          mkdir -p /tmp/penv && cd /tmp/penv
+          printf '[workspace]\nname = "p"\nchannels = ["conda-forge"]\nplatforms = ["linux-64"]\n\n[dependencies]\npodman = "~=5.8"\ncrun = "*"\n' > pixi.toml
+          pixi install
+          pixi list | grep -E "podman|crun|runc|conmon|netavark"
+          pixi run podman info --format '{{.Host.CgroupManager}} | {{.Host.OCIRuntime.Name}} {{.Host.OCIRuntime.Path}} | {{.Host.CgroupsVersion}}'
+          pixi run podman run --rm docker.io/library/alpine:3 echo PROJECT-ENV-OK || true
+          pixi run podman --runtime runc run --rm docker.io/library/alpine:3 echo RUNC-OK || true
+          pixi run podman --cgroup-manager cgroupfs run --rm --memory 256m docker.io/library/alpine:3 echo CGROUPFS-MEM-OK || true
+          pixi run crun --version
+          exit 1
 
       # pasta shares the host's IP with containers, so app containers reach the router via a dummy interface.
       - name: Create openhost0 dummy interface for container-to-router traffic
