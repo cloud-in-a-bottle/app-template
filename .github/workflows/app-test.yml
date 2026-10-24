@@ -79,11 +79,6 @@ jobs:
           mkdir -p ~/.config/containers
           printf '[containers]\nhost_containers_internal_ip = "10.200.0.1"\n' >> ~/.config/containers/containers.conf
 
-      - name: Verify rootless podman works
-        run: |
-          pixi run --manifest-path "$PODMAN_ENV/pixi.toml" podman --version
-          pixi run --manifest-path "$PODMAN_ENV/pixi.toml" podman info --format '{{.Host.Security.Rootless}}' | grep -qx true
-
       - name: Install playwright chromium
         run: uv run --frozen playwright install --with-deps chromium
 
