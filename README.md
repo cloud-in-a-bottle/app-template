@@ -22,6 +22,25 @@ just check   # lint, format, typecheck
 Python work uses [uv](https://docs.astral.sh/uv/). Use `uv add <pkg>` to add a
 dependency and `uv add --group dev <pkg>` for a dev-only one.
 
+CI (`.github/workflows/ci.yml`) runs the test suite on every PR and push to main via the reusable
+`.github/workflows/app-test.yml`. An app repo can either keep its own copy of `app-test.yml` (what you get by copying
+this template; `ci.yml` calls `./.github/workflows/app-test.yml`), or delete it and call the template's shared copy,
+so it picks up fixes without duplicating the workflow:
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    uses: cloud-in-a-bottle/app-template/.github/workflows/app-test.yml@main
+```
+
 `just test` uses the OpenHost test harness (the `openhost[test-harness]` package),
 which builds the Dockerfile and runs the app under **podman** (so podman must be
 running on the host) fronted by the real OpenHost router. `stack.url` requires

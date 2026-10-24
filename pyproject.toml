@@ -23,7 +23,7 @@ dev = [
     # openhost.toml declares, and fronts it with the real OpenHost router (real
     # subdomain routing and cookie auth). Tests hit a real, containerized app.
     # Requires podman on the host.
-    "openhost[test-harness] @ git+https://github.com/imbue-openhost/openhost@main",
+    "openhost[test-harness] @ git+https://github.com/cloud-in-a-bottle/cloud-in-a-bottle@main",
 ]
 
 [build-system]

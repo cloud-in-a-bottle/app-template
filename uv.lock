@@ -66,7 +66,7 @@ requires-dist = [
 dev = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy" },
-    { name = "openhost", extras = ["test-harness"], git = "https://github.com/imbue-openhost/openhost?rev=main" },
+    { name = "openhost", extras = ["test-harness"], git = "https://github.com/cloud-in-a-bottle/cloud-in-a-bottle?rev=main" },
     { name = "playwright" },
     { name = "pre-commit" },
     { name = "pytest", specifier = ">=8.0" },
@@ -862,8 +862,8 @@ wheels = [
 
 [[package]]
 name = "openhost"
-version = "0.1.0"
-source = { git = "https://github.com/imbue-openhost/openhost?rev=main#d0c8456ffb8055bdbf2454e077b81589628dd9a0" }
+version = "0.3.0rc1"
+source = { git = "https://github.com/cloud-in-a-bottle/cloud-in-a-bottle?rev=main#445237109b17a42a5d11e61b2b8b5554cb6ab9a1" }
 dependencies = [
     { name = "acme" },
     { name = "argon2-cffi" },
@@ -886,6 +886,7 @@ dependencies = [
     { name = "packaging" },
     { name = "pygments" },
     { name = "pyjwt", extra = ["crypto"] },
+    { name = "pyyaml" },
     { name = "tomli-w" },
     { name = "typed-settings" },
     { name = "websockets" },
