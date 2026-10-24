@@ -24,7 +24,8 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # 26.04's apt podman is 5.x; 24.04's 4.9 is older than the harness is developed against.
+    runs-on: ubuntu-26.04
     timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +52,7 @@ jobs:
           sudo ip addr add 10.200.0.1/32 dev openhost0
           sudo ip link set openhost0 up
           mkdir -p ~/.config/containers
-          printf '[containers]\nhost_containers_internal_ip = "10.200.0.1"\n\n[network]\ndefault_rootless_network_cmd = "pasta"\n' >> ~/.config/containers/containers.conf
+          printf '[containers]\nhost_containers_internal_ip = "10.200.0.1"\n' >> ~/.config/containers/containers.conf
 
       - name: Install playwright chromium
         run: uv run --frozen playwright install --with-deps chromium
