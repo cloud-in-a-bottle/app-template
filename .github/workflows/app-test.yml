@@ -56,11 +56,17 @@ jobs:
       - name: DEBUG podman
         run: |
           set -x
-          podman info | head -60
-          ls -la ~/.pixi/bin
-          podman run --rm docker.io/library/alpine:3 echo run-ok || true
-          printf 'FROM docker.io/library/alpine:3\nRUN echo build-ok\n' > /tmp/Dockerfile.dbg
-          podman build --log-level=debug -f /tmp/Dockerfile.dbg /tmp 2>&1 | tail -60 || true
+          echo "--- A: global podman, cgroupfs + memory limit"
+          podman --cgroup-manager=cgroupfs run --rm --memory 256m --cpus 0.5 docker.io/library/alpine:3 echo A-ok || true
+          echo "--- B: pixi project env"
+          mkdir -p /tmp/penv && cd /tmp/penv
+          printf '[workspace]\nname = "p"\nchannels = ["conda-forge"]\nplatforms = ["linux-64"]\n\n[dependencies]\npodman = "~=5.8"\ncrun = "*"\n' > pixi.toml
+          pixi install
+          pixi run podman info --format '{{.Host.CgroupManager}} {{.Host.OCIRuntime.Path}}'
+          pixi run podman run --rm --memory 256m --cpus 0.5 docker.io/library/alpine:3 echo B-ok || true
+          pixi run bash -c 'env | grep -i -E "conta|podman|CONDA_PREFIX" ; ls $CONDA_PREFIX/share/containers $CONDA_PREFIX/etc/containers 2>/dev/null; cat $CONDA_PREFIX/share/containers/containers.conf 2>/dev/null | grep -v "^#" | grep -v "^$" | head -30'
+          echo "--- global info"
+          podman info --format '{{.Host.CgroupManager}} {{.Host.OCIRuntime.Path}}'
 
       # pasta shares the host's IP with containers, so app containers reach the router via a dummy interface.
       - name: Create openhost0 dummy interface for container-to-router traffic
