@@ -53,6 +53,15 @@ jobs:
       - name: Verify rootless podman works
         run: podman info --format '{{.Host.Security.Rootless}}' | grep -qx true
 
+      - name: DEBUG podman
+        run: |
+          set -x
+          podman info | head -60
+          ls -la ~/.pixi/bin
+          podman run --rm docker.io/library/alpine:3 echo run-ok || true
+          printf 'FROM docker.io/library/alpine:3\nRUN echo build-ok\n' > /tmp/Dockerfile.dbg
+          podman build --log-level=debug -f /tmp/Dockerfile.dbg /tmp 2>&1 | tail -60 || true
+
       # pasta shares the host's IP with containers, so app containers reach the router via a dummy interface.
       - name: Create openhost0 dummy interface for container-to-router traffic
         run: |
