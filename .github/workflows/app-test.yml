@@ -25,6 +25,9 @@ permissions:
 
 env:
   PODMAN_ENV: ${{ github.workspace }}/../podman-env
+  # Use a uv-managed (current patch) Python, not the runner's system one; ubuntu-24.04 ships 3.12.3, which predates
+  # fixes some apps' dependencies need (eg get_type_hints on PEP 695 generics, fixed in 3.12.4).
+  UV_PYTHON_PREFERENCE: only-managed
 
 jobs:
   test:
