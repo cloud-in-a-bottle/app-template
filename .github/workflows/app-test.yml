@@ -82,6 +82,11 @@ jobs:
           mkdir -p ~/.config/containers
           printf '[containers]\nhost_containers_internal_ip = "10.200.0.1"\n' >> ~/.config/containers/containers.conf
 
+      # The runner image ships MySQL with an AppArmor profile attached to /usr/sbin/mysqld, which also confines an app
+      # container's own mysqld and denies its data dir. Cloud in a Bottle servers don't have it.
+      - name: Unload the runner's MySQL AppArmor profile
+        run: sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld || true
+
       - name: Install playwright chromium
         run: uv run --frozen playwright install --with-deps chromium
 
