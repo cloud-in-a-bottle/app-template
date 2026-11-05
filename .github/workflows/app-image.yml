@@ -1,8 +1,7 @@
-# Reusable workflow: builds an app's container image the way the router does (the manifest's [runtime.container]
-# image, with the repo root as context), pushes it to registry.cloudinabottle.org/<repo name> tagged with the commit
-# sha and the branch, and signs it with cosign keyless (Sigstore, via the job's GitHub OIDC token). The registry only
-# accepts pushes from main, on push, workflow_dispatch or schedule events. Apps call it from their ci.yml after the
-# tests:
+# Reusable workflow: builds an app's container image (./Dockerfile by default, with the repo root as context), pushes
+# it to registry.cloudinabottle.org/<repo name> tagged with the commit sha and the branch, and signs it with cosign
+# keyless (Sigstore, via the job's GitHub OIDC token). The registry only accepts pushes from main, on push,
+# workflow_dispatch or schedule events. Apps call it from their ci.yml after the tests:
 #
 #   jobs:
 #     image:
@@ -12,6 +11,8 @@
 #       permissions:
 #         contents: read
 #         id-token: write
+#       # with:
+#       #   dockerfile: path/to/Dockerfile  # if it isn't ./Dockerfile
 #
 # The signing certificate names this workflow (not the calling one) and records the calling repo, so verify with:
 #
@@ -23,6 +24,11 @@ name: App image
 
 on:
   workflow_call:
+    inputs:
+      dockerfile:
+        description: The Dockerfile to build, relative to the repo root (which is the build context).
+        type: string
+        default: Dockerfile
     outputs:
       image:
         description: The pushed image, without a tag.
@@ -49,20 +55,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Read the Dockerfile path from the app manifest
-        id: manifest
-        run: |
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import pathlib, tomllib
-          manifests = [p for p in ("cloudinabottle.toml", "openhost.toml") if pathlib.Path(p).is_file()]
-          if not manifests:
-              raise SystemExit("no cloudinabottle.toml or openhost.toml at the repo root")
-          dockerfile = tomllib.loads(pathlib.Path(manifests[0]).read_text())["runtime"]["container"]["image"]
-          if not pathlib.Path(dockerfile).is_file():
-              raise SystemExit(f"{manifests[0]}: [runtime.container] image = {dockerfile!r} is not a file")
-          print(f"dockerfile={dockerfile}")
-          PY
-
       - id: login
         uses: cloud-in-a-bottle/actions/registry-login@d8a8869a427242308e6fd22754961d1e6e095674  # v1
 
@@ -73,7 +65,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: .
-          file: ${{ steps.manifest.outputs.dockerfile }}
+          file: ${{ inputs.dockerfile }}
           platforms: linux/amd64
           push: true
           tags: |

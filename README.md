@@ -42,9 +42,9 @@ jobs:
 ```
 
 Apps in the `cloud-in-a-bottle` org can also publish their image: the reusable `.github/workflows/app-image.yml`
-builds the Dockerfile the manifest names, pushes it to `registry.cloudinabottle.org/<repo name>:<commit sha>` (and
-`:main`), and signs it with cosign keyless. The registry only takes pushes from org repos on main, so add it after the
-tests, for pushes only:
+builds `./Dockerfile` (or the `dockerfile` input), pushes it to `registry.cloudinabottle.org/<repo name>:<commit sha>`
+(and `:main`), and signs it with cosign keyless. The registry only takes pushes from org repos on main, so add it after
+the tests, for pushes only:
 
 ```yaml
   image:
