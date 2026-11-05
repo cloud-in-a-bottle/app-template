@@ -41,6 +41,23 @@ jobs:
     uses: cloud-in-a-bottle/app-template/.github/workflows/app-test.yml@main
 ```
 
+Apps in the `cloud-in-a-bottle` org can also publish their image: the reusable `.github/workflows/app-image.yml`
+builds `./Dockerfile` (or the `dockerfile` input), pushes it to `registry.cloudinabottle.org/<repo name>:<commit sha>`
+(and `:main`), and signs it with cosign keyless. The registry only takes pushes from org repos on main, so add it after
+the tests, for pushes only:
+
+```yaml
+  image:
+    needs: test
+    if: github.event_name == 'push'
+    uses: cloud-in-a-bottle/app-template/.github/workflows/app-image.yml@main
+    permissions:
+      contents: read
+      id-token: write
+```
+
+The workflow's header comment shows how to verify a signature.
+
 `just test` uses the OpenHost test harness (the `openhost[test-harness]` package),
 which builds the Dockerfile and runs the app under **podman** (so podman must be
 running on the host) fronted by the real OpenHost router. `stack.url` requires
