@@ -58,6 +58,20 @@ the tests, for pushes only:
 
 The workflow's header comment shows how to verify a signature.
 
+To release, also add the reusable `.github/workflows/app-release.yml` after the image job. When the manifest's
+`[app] version` has no `v<version>` tag yet, it creates one on the commit, so a tag always names a commit whose image
+is published and signed. Cloud in a Bottle installs and updates apps that set `[runtime.container] prebuilt_image` to
+their latest tag. Bump the major version for changes an owner must approve, the minor for upstream updates, and the
+patch for our own changes.
+
+```yaml
+  release:
+    needs: image
+    uses: cloud-in-a-bottle/app-template/.github/workflows/app-release.yml@main
+    permissions:
+      contents: write
+```
+
 `just test` uses the OpenHost test harness (the `openhost[test-harness]` package),
 which builds the Dockerfile and runs the app under **podman** (so podman must be
 running on the host) fronted by the real OpenHost router. `stack.url` requires

@@ -1,0 +1,73 @@
+# Reusable workflow: releases the commit as v<version> (the manifest's [app] version) by creating that git tag, unless
+# it already exists. Run it after app-image.yml, so a tag only ever names a commit whose image is published and
+# signed: Cloud in a Bottle tracks an app's latest v* tag and pulls the image built from that tag's commit
+# (`[runtime.container] prebuilt_image`). A merge that doesn't bump the version isn't a release. Apps call it from
+# their ci.yml:
+#
+#   jobs:
+#     release:
+#       needs: image
+#       uses: cloud-in-a-bottle/app-template/.github/workflows/app-release.yml@main
+#       permissions:
+#         contents: write
+#
+# Versions: a major bump is one an owner must approve (anything an existing install can't take unattended); minor for
+# an upstream update; patch for our own changes.
+name: App release
+
+on:
+  workflow_call:
+    outputs:
+      tag:
+        description: The tag created, or empty if the version was already released.
+        value: ${{ jobs.release.outputs.tag }}
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write  # to create the tag
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0  # all tags, to compare against
+
+      - name: Read the version and compare it with released ones
+        id: version
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import pathlib, re, subprocess, tomllib
+          manifests = [p for p in ("cloudinabottle.toml", "openhost.toml") if pathlib.Path(p).is_file()]
+          if not manifests:
+              raise SystemExit("no cloudinabottle.toml or openhost.toml at the repo root")
+          version = tomllib.loads(pathlib.Path(manifests[0]).read_text())["app"]["version"]
+          semver = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+          if not semver.match(version):
+              raise SystemExit(f"{manifests[0]}: [app] version {version!r} isn't X.Y.Z")
+          tags = subprocess.run(["git", "tag", "--list", "v*"], capture_output=True, text=True, check=True).stdout.split()
+          released = [tuple(map(int, m.groups())) for t in tags if (m := semver.match(t[1:]))]
+          if f"v{version}" in tags:
+              print("tag=")  # already released
+          elif released and tuple(map(int, semver.match(version).groups())) < max(released):
+              newest = ".".join(map(str, max(released)))
+              raise SystemExit(f"version {version} is older than the newest release, v{newest}")
+          else:
+              print(f"tag=v{version}")
+          PY
+
+      - name: Tag the release
+        id: tag
+        if: steps.version.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Released \`$TAG\` at $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
