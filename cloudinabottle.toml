@@ -1,6 +1,9 @@
 [app]
 name = "app-template"
 version = "0.1.0"
+# Uncomment once CI tags releases (app-release.yml) so installs track the newest vX.Y.Z tag instead of the
+# branch head. Required by [runtime.container] prebuilt_image.
+# release_tag_format = "semver"
 description = "TODO: one-line description of your app"
 
 [runtime.container]

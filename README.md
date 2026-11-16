@@ -60,8 +60,9 @@ The workflow's header comment shows how to verify a signature.
 
 To release, also add the reusable `.github/workflows/app-release.yml` after the image job. When the manifest's
 `[app] version` has no `v<version>` tag yet, it creates one on the commit, so a tag always names a commit whose image
-is published and signed. Cloud in a Bottle installs and updates apps that set `[runtime.container] prebuilt_image` to
-their latest tag. Bump the major version for changes an owner must approve, the minor for upstream updates, and the
+is published and signed. Set `[app] release_tag_format = "semver"` so Cloud in a Bottle installs and updates the app
+to its latest tag; with `[runtime.container] prebuilt_image` also set (which requires it), it pulls that tag's image
+instead of building. Bump the major version for changes an owner must approve, the minor for upstream updates, and the
 patch for our own changes.
 
 ```yaml

@@ -1,7 +1,7 @@
 # Reusable workflow: releases the commit as v<version> (the manifest's [app] version) by creating that git tag, unless
 # it already exists. Run it after app-image.yml, so a tag only ever names a commit whose image is published and
-# signed: Cloud in a Bottle tracks an app's latest v* tag and pulls the image built from that tag's commit
-# (`[runtime.container] prebuilt_image`). A merge that doesn't bump the version isn't a release. Apps call it from
+# signed: Cloud in a Bottle tracks the latest v* tag of an app that sets `[app] release_tag_format = "semver"`, and
+# pulls the image built from that tag's commit (`[runtime.container] prebuilt_image`). A merge that doesn't bump the version isn't a release. Apps call it from
 # their ci.yml:
 #
 #   jobs:
